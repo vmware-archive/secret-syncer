@@ -6,10 +6,6 @@ import "io"
 type SimpleValue string
 type CompoundValue map[string]interface{}
 
-type Credential struct {
-	Location interface{}
-	Value    Value
-}
 type Data = []Credential
 type Convergeable interface {
 	Converge(Data) error
@@ -27,12 +23,12 @@ func (SecretWriter) Write(Data) error {
 
 type SecretSink interface {
 	WriteSimple(string, SimpleValue) error
-	WriteCompound(string, CompoundValue) error
+	// WriteCompound(string, CompoundValue) error
 	Path(string, string) string
 }
 
 type NaiveConvergeable struct {
-	Output
+	SecretWriter
 }
 
 func (n NaiveConvergeable) Converge(data Data) error {
@@ -62,11 +58,6 @@ type TeamPath struct {
 	team   string
 	secret string
 }
-type PipelinePath struct {
-	team     string
-	pipeline string
-	secret   string
-}
 type SharedPath struct{}
 
 // a sample of what a secret store contains:
@@ -82,10 +73,10 @@ type SharedPath struct{}
 // }
 
 func main() {
-	input = getInput()
-	convergeable = getConvergeable()
-	data, _ = input.Read()
-	convergeable.Converge(data)
+	// input = getInput()
+	// convergeable = getConvergeable()
+	// data, _ = input.Read()
+	// convergeable.Converge(data)
 }
 
 // file -> THIS -> vault

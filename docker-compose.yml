@@ -1,0 +1,17 @@
+version: '3'
+services:
+  vault:
+    image: vault
+    cap_add: ["IPC_LOCK"]
+    command: ["server", "-dev"]
+    ports: ["8200:8200"]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: myroot
+  tests:
+    image: golang
+    volumes: [".:/src"]
+    working_dir: /src
+    command: ["go", "test", "./..."]
+    environment:
+      VAULT_TOKEN: myroot
+      VAULT_ADDR: http://vault:8200

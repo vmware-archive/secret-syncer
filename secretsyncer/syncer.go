@@ -1,7 +1,7 @@
 package secretsyncer
 
 import (
-	vaultapi "github.com/hashicorp/vault/api"
+	"io/ioutil"
 )
 
 type Syncer struct {
@@ -9,18 +9,51 @@ type Syncer struct {
 	Sink   Sink
 }
 
+type Source interface {
+	Read() (Data, error)
+}
+type Sink interface {
+	WriteSimple(string, SimpleValue) error
+	// WriteCompound(string, CompoundValue) error
+	PipelinePath(PipelinePath) string
+}
+
+// TODO what if reading the file fails?
 func FileSyncer(secretsFile string) Syncer {
-	return Syncer{SecretsFile: secretsFile}
+	fileBytes, _ := ioutil.ReadFile(secretsFile)
+	return Syncer{
+		Source: BytesSource{fileBytes},
+		Sink:   VaultSink{},
+	}
 }
 
 func (s Syncer) Sync() {
-	client, _ := vaultapi.NewClient(nil)
-	client.Logical().Write(
-		"/concourse/team_name/pipeline_name/pipeline_scoped",
-		map[string]interface{}{"value": "credential"},
-	)
+	data, _ := s.Source.Read()
+	for _, credential := range data {
+		var path string
+		switch l := credential.Location.(type) {
+		case PipelinePath:
+			path = s.Sink.PipelinePath(l)
+		}
+		switch v := credential.Value.(type) {
+		case SimpleValue:
+			s.Sink.WriteSimple(path, v)
+		}
+	}
 }
 
+// a sample of what a secret store contains:
+// []Credential{
+// 	{
+// 		Location: TeamPath{team:"main", secret:"secret1"},
+// 		Value:    SimpleValue("value"),
+// 	},
+// 	{
+// 		Location: PipelinePath{team:"main",pipeline:"pipeline",secret:"secret2"},
+// 		Value:    CompoundValue{"foo":"bar","baz":"qux"},
+// 	}
+// }
+type Data = []Credential
 type Credential struct {
 	Location interface{}
 	Value    interface{}
@@ -31,5 +64,8 @@ type PipelinePath struct {
 	Pipeline string
 	Secret   string
 }
+// TODO implement team paths and shared paths
 
 type SimpleValue string
+
+// TODO implement compound values

@@ -30,7 +30,7 @@ type SecretSyncerIntegrationSuite struct {
 func (s *SecretSyncerIntegrationSuite) SetupSuite() {
 	rand.Seed(time.Now().UnixNano())
 	ensureDefaultEnvVar("VAULT_TOKEN", "myroot")
-	ensureDefaultEnvVar("VAULT_ADDR", "http://localhost:8200")
+	ensureDefaultEnvVar("VAULT_ADDR", "http://127.0.0.1:8200")
 	var err error
 	s.vaultClient, err = vaultapi.NewClient(nil)
 	if err != nil {
@@ -53,19 +53,23 @@ func ensureDefaultEnvVar(envVarName, defaultValue string) {
 
 func (s *SecretSyncerIntegrationSuite) TestWritesSimplePipelineSecretInEmptyDevVaultUsingTokenAuth() {
 	secretName := randomSecretName()
-	secretsFile := writeFixture(fmt.Sprintf(`
-team_name/pipeline_name/%s: credential
-`, secretName))
+	secretsFile := writeFixture(
+		fmt.Sprintf(
+			`team_name/pipeline_name/%s: credential`,
+			secretName,
+		),
+	)
 	defer os.Remove(secretsFile)
 
-	syncer := secretsyncer.FileSyncer(secretsFile)
-	syncer.Sync()
+	secretsyncer.FileSyncer(secretsFile).Sync()
 
 	s.HasSecret(
 		fmt.Sprintf("/concourse/team_name/pipeline_name/%s", secretName),
 		map[string]interface{}{"value": "credential"},
 	)
 }
+
+// TODO implement deleting unwanted secrets
 
 func randomSecretName() string {
 	return strconv.Itoa(rand.Int())

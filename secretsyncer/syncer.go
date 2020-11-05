@@ -19,6 +19,8 @@ type Sink interface {
 	WriteSimple(string, SimpleValue) error
 	WriteCompound(string, CompoundValue) error
 	PipelinePath(PipelinePath) string
+	TeamPath(TeamPath) string
+	SharedPath(SharedPath) string
 }
 
 func FileSyncer(secretsFile string) (Syncer, error) {
@@ -43,6 +45,10 @@ func (s Syncer) Sync() error {
 		switch l := credential.Location.(type) {
 		case PipelinePath:
 			path = s.Sink.PipelinePath(l)
+		case TeamPath:
+			path = s.Sink.TeamPath(l)
+		case SharedPath:
+			path = s.Sink.SharedPath(l)
 		}
 		switch v := credential.Value.(type) {
 		case SimpleValue:
@@ -82,8 +88,13 @@ type PipelinePath struct {
 	Pipeline string
 	Secret   string
 }
-
-// TODO implement team paths and shared paths
+type TeamPath struct {
+	Team   string
+	Secret string
+}
+type SharedPath struct {
+	Secret string
+}
 
 type SimpleValue string
 type CompoundValue map[string]interface{}

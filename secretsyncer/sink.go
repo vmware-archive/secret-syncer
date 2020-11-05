@@ -10,8 +10,15 @@ type VaultSink struct {
 	Client VaultClient
 }
 
+// TODO these templates depend on the patterns concourse is expecting
 func (vs *VaultSink) PipelinePath(pp PipelinePath) string {
 	return fmt.Sprintf("/concourse/%s/%s/%s", pp.Team, pp.Pipeline, pp.Secret)
+}
+func (vs *VaultSink) TeamPath(tp TeamPath) string {
+	return fmt.Sprintf("/concourse/%s/%s", tp.Team, tp.Secret)
+}
+func (vs *VaultSink) SharedPath(sp SharedPath) string {
+	return fmt.Sprintf("/concourse/shared/%s", sp.Secret)
 }
 func (vs *VaultSink) WriteSimple(path string, val SimpleValue) error {
 	return vs.write(path, val)

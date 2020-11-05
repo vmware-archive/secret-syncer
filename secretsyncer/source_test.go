@@ -70,3 +70,61 @@ func (s *SourceSuite) TestFailsOnCompoundSecretWithWrongValueType() {
 	_, err := secretsyncer.BytesSource{fileBytes}.Read()
 	s.EqualError(err, "secret values of type '[]interface {}' are not allowed")
 }
+
+func (s *SourceSuite) TestReadsSimpleTeamSecret() {
+	fileBytes := []byte(`team_name/secret_name:
+  username: user
+  password: pass
+`)
+	actual, _ := secretsyncer.BytesSource{fileBytes}.Read()
+	s.Equal(
+		[]secretsyncer.Credential{
+			{
+				Location: secretsyncer.TeamPath{
+					Team:   "team_name",
+					Secret: "secret_name",
+				},
+				Value: secretsyncer.CompoundValue{
+					"username": secretsyncer.SimpleValue("user"),
+					"password": secretsyncer.SimpleValue("pass"),
+				},
+			},
+		},
+		actual,
+	)
+}
+
+func (s *SourceSuite) TestFailsOnInvalidLocationFormat() {
+	fileBytes := []byte(`an/invalid/location/format: cred`)
+	_, err := secretsyncer.BytesSource{fileBytes}.Read()
+	s.EqualError(err, "invalid location format: too many forward slashes")
+}
+
+func (s *SourceSuite) TestReadsSimpleSharedSecret() {
+	fileBytes := []byte(`shared: {secret_name: cred}`)
+	actual, _ := secretsyncer.BytesSource{fileBytes}.Read()
+	s.Equal(
+		[]secretsyncer.Credential{
+			{
+				Location: secretsyncer.SharedPath{
+					Secret: "secret_name",
+				},
+				Value: secretsyncer.SimpleValue("cred"),
+			},
+		},
+		actual,
+	)
+}
+
+func (s *SourceSuite) TestFailsOnSharedSecretWithNumberKey() {
+	fileBytes := []byte(`shared: {1: foo}`)
+	_, err := secretsyncer.BytesSource{fileBytes}.Read()
+	s.EqualError(err, "secret keys of type 'int' are not allowed")
+}
+
+
+func (s *SourceSuite) TestFailsOnWrongKeyNameForSharedSecrets() {
+	fileBytes := []byte(`foo: {bar: baz}`)
+	_, err := secretsyncer.BytesSource{fileBytes}.Read()
+	s.EqualError(err, "top-level key must be a location or 'shared'")
+}

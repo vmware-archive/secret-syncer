@@ -43,8 +43,22 @@ func (ts *TestSink) WriteCompound(path string, val secretsyncer.CompoundValue) e
 func (ts *TestSink) PipelinePath(pp secretsyncer.PipelinePath) string {
 	return pp.Team + "/" + pp.Pipeline + "/" + pp.Secret
 }
-func (ts *TestSink) Read(pp secretsyncer.PipelinePath) interface{} {
-	return ts.creds[ts.PipelinePath(pp)]
+func (ts *TestSink) TeamPath(tp secretsyncer.TeamPath) string {
+	return tp.Team + "/" + tp.Secret
+}
+func (ts *TestSink) SharedPath(sp secretsyncer.SharedPath) string {
+	return sp.Secret
+}
+func (ts *TestSink) Read(path interface{}) interface{} {
+	switch p := path.(type) {
+	case secretsyncer.TeamPath:
+		return ts.creds[ts.TeamPath(p)]
+	case secretsyncer.PipelinePath:
+		return ts.creds[ts.PipelinePath(p)]
+	case secretsyncer.SharedPath:
+		return ts.creds[ts.SharedPath(p)]
+	}
+	return nil
 }
 
 func (s *SyncerSuite) TestWritesSimplePipelineSecretsFromSourceToSink() {
@@ -83,6 +97,12 @@ func (es ErroringSink) WriteCompound(path string, val secretsyncer.CompoundValue
 	return es
 }
 func (es ErroringSink) PipelinePath(pp secretsyncer.PipelinePath) string {
+	return ""
+}
+func (es ErroringSink) TeamPath(tp secretsyncer.TeamPath) string {
+	return ""
+}
+func (es ErroringSink) SharedPath(sp secretsyncer.SharedPath) string {
 	return ""
 }
 
@@ -134,6 +154,50 @@ func (s *SyncerSuite) TestWritesCompoundPipelineSecretsFromSourceToSink() {
 			Team:     "team_name",
 			Pipeline: "pipeline_name",
 			Secret:   "secret_name",
+		}),
+	)
+}
+
+func (s *SyncerSuite) TestWritesSimpleTeamSecretsFromSourceToSink() {
+	source := DummySource{credentials: []secretsyncer.Credential{
+		{
+			Location: secretsyncer.TeamPath{
+				Team:   "team_name",
+				Secret: "secret_name",
+			},
+			Value: secretsyncer.SimpleValue("credential"),
+		},
+	}}
+	sink := &TestSink{}
+
+	secretsyncer.Syncer{Source: source, Sink: sink}.Sync()
+
+	s.Equal(
+		secretsyncer.SimpleValue("credential"),
+		sink.Read(secretsyncer.TeamPath{
+			Team:   "team_name",
+			Secret: "secret_name",
+		}),
+	)
+}
+
+func (s *SyncerSuite) TestWritesSimpleSharedSecretsFromSourceToSink() {
+	source := DummySource{credentials: []secretsyncer.Credential{
+		{
+			Location: secretsyncer.SharedPath{
+				Secret: "secret_name",
+			},
+			Value: secretsyncer.SimpleValue("credential"),
+		},
+	}}
+	sink := &TestSink{}
+
+	secretsyncer.Syncer{Source: source, Sink: sink}.Sync()
+
+	s.Equal(
+		secretsyncer.SimpleValue("credential"),
+		sink.Read(secretsyncer.SharedPath{
+			Secret: "secret_name",
 		}),
 	)
 }

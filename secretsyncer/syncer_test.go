@@ -23,21 +23,25 @@ func (fs DummySource) Read() (secretsyncer.Data, error) {
 }
 
 type TestSink struct {
-	creds map[string]interface{}
+	Creds map[string]interface{}
 }
 
 func (ts *TestSink) WriteSimple(path string, val secretsyncer.SimpleValue) error {
-	if ts.creds == nil {
-		ts.creds = map[string]interface{}{}
+	if ts.Creds == nil {
+		ts.Creds = map[string]interface{}{}
 	}
-	ts.creds[path] = val
+	ts.Creds[path] = val
 	return nil
 }
 func (ts *TestSink) WriteCompound(path string, val secretsyncer.CompoundValue) error {
-	if ts.creds == nil {
-		ts.creds = map[string]interface{}{}
+	if ts.Creds == nil {
+		ts.Creds = map[string]interface{}{}
 	}
-	ts.creds[path] = val
+	ts.Creds[path] = val
+	return nil
+}
+func (ts *TestSink) Clear() error {
+	ts.Creds = map[string]interface{}{}
 	return nil
 }
 func (ts *TestSink) PipelinePath(pp secretsyncer.PipelinePath) string {
@@ -52,11 +56,11 @@ func (ts *TestSink) SharedPath(sp secretsyncer.SharedPath) string {
 func (ts *TestSink) Read(path interface{}) interface{} {
 	switch p := path.(type) {
 	case secretsyncer.TeamPath:
-		return ts.creds[ts.TeamPath(p)]
+		return ts.Creds[ts.TeamPath(p)]
 	case secretsyncer.PipelinePath:
-		return ts.creds[ts.PipelinePath(p)]
+		return ts.Creds[ts.PipelinePath(p)]
 	case secretsyncer.SharedPath:
-		return ts.creds[ts.SharedPath(p)]
+		return ts.Creds[ts.SharedPath(p)]
 	}
 	return nil
 }
@@ -96,6 +100,9 @@ func (es ErroringSink) WriteSimple(path string, val secretsyncer.SimpleValue) er
 func (es ErroringSink) WriteCompound(path string, val secretsyncer.CompoundValue) error {
 	return es
 }
+func (es ErroringSink) Clear() error {
+	return es
+}
 func (es ErroringSink) PipelinePath(pp secretsyncer.PipelinePath) string {
 	return ""
 }
@@ -124,7 +131,7 @@ func (s *SyncerSuite) TestFailsOnSecretSinkError() {
 
 	err := secretsyncer.Syncer{Source: source, Sink: sink}.Sync()
 
-	s.EqualError(err, fmt.Sprintf("writing simple secret: %s", sinkError.Error()))
+	s.EqualError(err, fmt.Sprintf("clearing sink: %s", sinkError.Error()))
 }
 
 func (s *SyncerSuite) TestWritesCompoundPipelineSecretsFromSourceToSink() {
@@ -198,6 +205,25 @@ func (s *SyncerSuite) TestWritesSimpleSharedSecretsFromSourceToSink() {
 		secretsyncer.SimpleValue("credential"),
 		sink.Read(secretsyncer.SharedPath{
 			Secret: "secret_name",
+		}),
+	)
+}
+
+func (s *SyncerSuite) TestClearsSecretsBeforeWriting() {
+	source := DummySource{credentials: []secretsyncer.Credential{}}
+	sink := &TestSink{}
+	sink.WriteCompound("team/secret", secretsyncer.CompoundValue{
+		"username": "user",
+		"password": "pass",
+	})
+
+	secretsyncer.Syncer{Source: source, Sink: sink}.Sync()
+
+	s.Equal(
+		nil,
+		sink.Read(secretsyncer.TeamPath{
+			Team:   "team",
+			Secret: "secret",
 		}),
 	)
 }

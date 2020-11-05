@@ -24,6 +24,13 @@ func (mvc *MockVaultClient) Write(path string, data map[string]interface{}) erro
 	mvc.secrets[path] = data
 	return nil
 }
+func (mvc *MockVaultClient) List(path string) ([]string, error) {
+	return nil, nil
+}
+func (mvc *MockVaultClient) Delete(path string) error {
+	delete(mvc.secrets, path)
+	return nil
+}
 func (mvc *MockVaultClient) Read(path string) map[string]interface{} {
 	return mvc.secrets[path]
 }
@@ -66,6 +73,12 @@ type ErroringVaultClient struct {
 }
 
 func (evc *ErroringVaultClient) Write(path string, data map[string]interface{}) error {
+	return evc.err
+}
+func (evc *ErroringVaultClient) List(path string) ([]string, error) {
+	return nil, evc.err
+}
+func (evc *ErroringVaultClient) Delete(path string) error {
 	return evc.err
 }
 func (s *VaultSinkSuite) TestSurfacesErrorFromClient() {

@@ -26,6 +26,19 @@ func (vs *VaultSink) WriteSimple(path string, val SimpleValue) error {
 func (vs *VaultSink) WriteCompound(path string, val CompoundValue) error {
 	return vs.write(path, val)
 }
+func (vs *VaultSink) Clear() error {
+	paths, err := vs.Client.List("concourse/")
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		err = vs.Client.Delete(path)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 func (vs *VaultSink) write(path string, val interface{}) error {
 	var data map[string]interface{}
 	switch v := val.(type) {
@@ -48,13 +61,38 @@ func (vs *VaultSink) write(path string, val interface{}) error {
 
 type VaultClient interface {
 	Write(string, map[string]interface{}) error
+	List(string) ([]string, error)
+	Delete(string) error
 }
 
-type vaultClient struct {
+type DefaultVaultClient struct {
 	*vaultapi.Client
 }
 
-func (vc vaultClient) Write(path string, data map[string]interface{}) error {
-	_, err := vc.Logical().Write(path, data)
+func (dvc DefaultVaultClient) Write(path string, data map[string]interface{}) error {
+	_, err := dvc.Logical().Write(path, data)
+	return err
+}
+func (dvc DefaultVaultClient) List(path string) ([]string, error) {
+	r, err := dvc.Logical().List(path)
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		return []string{path}, nil
+	}
+	paths := []string{}
+	for _, p := range r.Data["keys"].([]interface{}) {
+		fullPath := path + p.(string)
+		nestedPaths, err := dvc.List(fullPath)
+		if err != nil {
+			return nil, err
+		}
+		paths = append(paths, nestedPaths...)
+	}
+	return paths, nil
+}
+func (dvc DefaultVaultClient) Delete(path string) error {
+	_, err := dvc.Logical().Delete(path)
 	return err
 }

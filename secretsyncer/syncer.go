@@ -18,6 +18,9 @@ type Source interface {
 type Sink interface {
 	WriteSimple(string, SimpleValue) error
 	WriteCompound(string, CompoundValue) error
+	Clear() error
+	// TODO determining path templates is a slightly different
+	// responsibility than writing secrets. split out a different interface.
 	PipelinePath(PipelinePath) string
 	TeamPath(TeamPath) string
 	SharedPath(SharedPath) string
@@ -34,12 +37,19 @@ func FileSyncer(secretsFile string) (Syncer, error) {
 	}
 	return Syncer{
 		Source: BytesSource{fileBytes},
-		Sink:   &VaultSink{vaultClient{client}},
+		Sink:   &VaultSink{DefaultVaultClient{client}},
 	}, nil
 }
 
 func (s Syncer) Sync() error {
-	data, _ := s.Source.Read()
+	data, err := s.Source.Read()
+	if err != nil {
+		return fmt.Errorf("reading secrets: %s", err)
+	}
+	err = s.Sink.Clear()
+	if err != nil {
+		return fmt.Errorf("clearing sink: %s", err)
+	}
 	for _, credential := range data {
 		var path string
 		switch l := credential.Location.(type) {

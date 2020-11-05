@@ -70,7 +70,27 @@ func (s *SecretSyncerIntegrationSuite) TestWritesSimplePipelineSecretInEmptyDevV
 	)
 }
 
-// TODO implement deleting unwanted secrets
+func (s *SecretSyncerIntegrationSuite) TestVaultSinkRecursivelyDeletesSecrets() {
+	client := secretsyncer.DefaultVaultClient{s.vaultClient}
+	client.Write(
+		"/concourse/main/concourse/foo",
+		map[string]interface{}{"value": "bar"},
+	)
+	client.Write(
+		"/concourse/main/foo",
+		map[string]interface{}{"value": "bar"},
+	)
+	client.Write(
+		"/concourse/shared/foo",
+		map[string]interface{}{"value": "bar"},
+	)
+	sink := &secretsyncer.VaultSink{client}
+
+	sink.Clear()
+
+	paths, _ := client.List("concourse/")
+	s.Equal([]string{"concourse/"}, paths)
+}
 
 func randomSecretName() string {
 	return strconv.Itoa(rand.Int())

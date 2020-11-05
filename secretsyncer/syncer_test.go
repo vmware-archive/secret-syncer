@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jamieklassen/secret-syncer/secretsyncer"
+	"github.com/concourse/secret-syncer/secretsyncer"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )

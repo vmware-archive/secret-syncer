@@ -1,4 +1,4 @@
-module github.com/jamieklassen/secret-syncer
+module github.com/concourse/secret-syncer
 
 go 1.14
 

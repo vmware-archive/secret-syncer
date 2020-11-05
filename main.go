@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jamieklassen/secret-syncer/secretsyncer"
+	"github.com/concourse/secret-syncer/secretsyncer"
 )
 
 func main() {

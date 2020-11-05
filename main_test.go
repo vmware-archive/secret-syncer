@@ -10,7 +10,7 @@ import (
 	"time"
 
 	vaultapi "github.com/hashicorp/vault/api"
-	"github.com/jamieklassen/secret-syncer/secretsyncer"
+	"github.com/concourse/secret-syncer/secretsyncer"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )

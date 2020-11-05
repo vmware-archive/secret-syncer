@@ -61,7 +61,8 @@ func (s *SecretSyncerIntegrationSuite) TestWritesSimplePipelineSecretInEmptyDevV
 	)
 	defer os.Remove(secretsFile)
 
-	secretsyncer.FileSyncer(secretsFile).Sync()
+	syncer, _ := secretsyncer.FileSyncer(secretsFile)
+	syncer.Sync()
 
 	s.HasSecret(
 		fmt.Sprintf("/concourse/team_name/pipeline_name/%s", secretName),

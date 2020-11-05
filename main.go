@@ -8,9 +8,16 @@ import (
 )
 
 func main() {
-	err := secretsyncer.FileSyncer(os.Args[1]).Sync()
+	// TODO validate args
+	syncer, err := secretsyncer.FileSyncer(os.Args[1])
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("constructing syncer: %s\n", err)
+		os.Exit(1)
+	}
+	err = syncer.Sync()
+	if err != nil {
+		fmt.Printf("syncing: %s\n", err)
+		os.Exit(1)
 	}
 }
 

@@ -19,13 +19,15 @@ type Sink interface {
 	PipelinePath(PipelinePath) string
 }
 
-// TODO what if reading the file fails?
-func FileSyncer(secretsFile string) Syncer {
-	fileBytes, _ := ioutil.ReadFile(secretsFile)
+func FileSyncer(secretsFile string) (Syncer, error) {
+	fileBytes, err := ioutil.ReadFile(secretsFile)
+	if err != nil {
+		return Syncer{}, err
+	}
 	return Syncer{
 		Source: BytesSource{fileBytes},
 		Sink:   VaultSink{},
-	}
+	}, nil
 }
 
 func (s Syncer) Sync() error {

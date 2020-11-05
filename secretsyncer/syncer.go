@@ -3,6 +3,8 @@ package secretsyncer
 import (
 	"fmt"
 	"io/ioutil"
+
+	vaultapi "github.com/hashicorp/vault/api"
 )
 
 type Syncer struct {
@@ -15,7 +17,7 @@ type Source interface {
 }
 type Sink interface {
 	WriteSimple(string, SimpleValue) error
-	// WriteCompound(string, CompoundValue) error
+	WriteCompound(string, CompoundValue) error
 	PipelinePath(PipelinePath) string
 }
 
@@ -24,9 +26,13 @@ func FileSyncer(secretsFile string) (Syncer, error) {
 	if err != nil {
 		return Syncer{}, err
 	}
+	client, err := vaultapi.NewClient(nil)
+	if err != nil {
+		return Syncer{}, fmt.Errorf("creating vault client: %s", err)
+	}
 	return Syncer{
 		Source: BytesSource{fileBytes},
-		Sink:   VaultSink{},
+		Sink:   &VaultSink{vaultClient{client}},
 	}, nil
 }
 
@@ -43,6 +49,11 @@ func (s Syncer) Sync() error {
 			err := s.Sink.WriteSimple(path, v)
 			if err != nil {
 				return fmt.Errorf("writing simple secret: %s", err)
+			}
+		case CompoundValue:
+			err := s.Sink.WriteCompound(path, v)
+			if err != nil {
+				return fmt.Errorf("writing compound secret: %s", err)
 			}
 		}
 	}
@@ -75,5 +86,4 @@ type PipelinePath struct {
 // TODO implement team paths and shared paths
 
 type SimpleValue string
-
-// TODO implement compound values
+type CompoundValue map[string]interface{}

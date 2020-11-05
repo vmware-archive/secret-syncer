@@ -14,4 +14,7 @@ func TestSuite(t *testing.T) {
 	suite.Run(t, &SourceSuite{
 		Assertions: require.New(t),
 	})
+	suite.Run(t, &VaultSinkSuite{
+		Assertions: require.New(t),
+	})
 }

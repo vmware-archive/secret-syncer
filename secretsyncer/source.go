@@ -48,8 +48,26 @@ func parseValue(value interface{}) (interface{}, error) {
 	switch v := value.(type) {
 	case string:
 		return SimpleValue(v), nil
+	case map[interface{}]interface{}:
+		return parseCompound(v)
 	default:
 		return nil, fmt.Errorf("secret values of type '%T' are not allowed", v)
 	}
 	return nil, nil
+}
+
+func parseCompound(yamlMap map[interface{}]interface{}) (CompoundValue, error) {
+	cv := CompoundValue{}
+	for key, value := range yamlMap {
+		stringKey, ok := key.(string)
+		if !ok {
+			return nil, fmt.Errorf("secret keys of type '%T' are not allowed", key)
+		}
+		parsedValue, err := parseValue(value)
+		if err != nil {
+			return nil, err
+		}
+		cv[stringKey] = parsedValue
+	}
+	return cv, nil
 }

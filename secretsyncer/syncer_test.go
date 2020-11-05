@@ -1,6 +1,9 @@
 package secretsyncer_test
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/jamieklassen/secret-syncer/secretsyncer"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -11,11 +14,11 @@ type SyncerSuite struct {
 	*require.Assertions
 }
 
-type FakeSource struct {
+type DummySource struct {
 	credentials []secretsyncer.Credential
 }
 
-func (fs FakeSource) Read() (secretsyncer.Data, error) {
+func (fs DummySource) Read() (secretsyncer.Data, error) {
 	return fs.credentials, nil
 }
 
@@ -38,7 +41,7 @@ func (ts *TestSink) Read(pp secretsyncer.PipelinePath) interface{} {
 }
 
 func (s *SyncerSuite) TestWritesSimplePipelineSecretsFromSourceToSink() {
-	source := FakeSource{credentials: []secretsyncer.Credential{
+	source := DummySource{credentials: []secretsyncer.Credential{
 		{
 			Location: secretsyncer.PipelinePath{
 				Team:     "team_name",
@@ -49,9 +52,8 @@ func (s *SyncerSuite) TestWritesSimplePipelineSecretsFromSourceToSink() {
 		},
 	}}
 	sink := &TestSink{}
-	syncer := secretsyncer.Syncer{Source: source, Sink: sink}
 
-	syncer.Sync()
+	secretsyncer.Syncer{Source: source, Sink: sink}.Sync()
 
 	s.Equal(
 		secretsyncer.SimpleValue("credential"),
@@ -61,4 +63,36 @@ func (s *SyncerSuite) TestWritesSimplePipelineSecretsFromSourceToSink() {
 			Secret:   "secret_name",
 		}),
 	)
+}
+
+type ErroringSink struct {
+	error
+}
+
+func (es ErroringSink) WriteSimple(path string, val secretsyncer.SimpleValue) error {
+	return es
+}
+func (es ErroringSink) PipelinePath(pp secretsyncer.PipelinePath) string {
+	return ""
+}
+
+func (s *SyncerSuite) TestFailsOnSecretSinkError() {
+	source := DummySource{credentials: []secretsyncer.Credential{
+		{
+			Location: secretsyncer.PipelinePath{
+				Team:     "team_name",
+				Pipeline: "pipeline_name",
+				Secret:   "secret_name",
+			},
+			Value: secretsyncer.SimpleValue("credential"),
+		},
+	}}
+	sinkError := errors.New(
+		"writing secret value 'credential' to vault path '/concourse/team_name/pipeline_name/secret_name': EOF",
+	)
+	sink := ErroringSink{sinkError}
+
+	err := secretsyncer.Syncer{Source: source, Sink: sink}.Sync()
+
+	s.EqualError(err, fmt.Sprintf("writing simple secret: %s", sinkError.Error()))
 }

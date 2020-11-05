@@ -1,6 +1,7 @@
 package secretsyncer
 
 import (
+	"fmt"
 	"io/ioutil"
 )
 
@@ -27,7 +28,7 @@ func FileSyncer(secretsFile string) Syncer {
 	}
 }
 
-func (s Syncer) Sync() {
+func (s Syncer) Sync() error {
 	data, _ := s.Source.Read()
 	for _, credential := range data {
 		var path string
@@ -37,9 +38,13 @@ func (s Syncer) Sync() {
 		}
 		switch v := credential.Value.(type) {
 		case SimpleValue:
-			s.Sink.WriteSimple(path, v)
+			err := s.Sink.WriteSimple(path, v)
+			if err != nil {
+				return fmt.Errorf("writing simple secret: %s", err)
+			}
 		}
 	}
+	return nil
 }
 
 // a sample of what a secret store contains:
@@ -64,6 +69,7 @@ type PipelinePath struct {
 	Pipeline string
 	Secret   string
 }
+
 // TODO implement team paths and shared paths
 
 type SimpleValue string

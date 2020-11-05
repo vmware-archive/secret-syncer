@@ -1,13 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/jamieklassen/secret-syncer/secretsyncer"
 )
 
 func main() {
-	secretsyncer.FileSyncer(os.Args[1]).Sync()
+	err := secretsyncer.FileSyncer(os.Args[1]).Sync()
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 // file -> THIS -> vault

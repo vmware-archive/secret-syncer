@@ -1,6 +1,7 @@
 package secretsyncer
 
 import (
+	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -18,13 +19,17 @@ type BytesSource struct {
 }
 
 func (bs BytesSource) Read() (Data, error) {
-	var value map[string]interface{}
-	yaml.Unmarshal(bs.Bytes, &value)
+	var rawData map[string]interface{}
+	yaml.Unmarshal(bs.Bytes, &rawData)
 	data := []Credential{}
-	for k, v := range value {
+	for k, v := range rawData {
+		val, err := parseValue(v)
+		if err != nil {
+			return nil, err
+		}
 		data = append(data, Credential{
 			Location: parseLocation(k),
-			Value:    parseValue(v),
+			Value:    val,
 		})
 	}
 	return data, nil
@@ -39,11 +44,12 @@ func parseLocation(key string) interface{} {
 	}
 }
 
-// TODO error on non simple/compound stuff
-func parseValue(value interface{}) interface{} {
+func parseValue(value interface{}) (interface{}, error) {
 	switch v := value.(type) {
 	case string:
-		return SimpleValue(v)
+		return SimpleValue(v), nil
+	default:
+		return nil, fmt.Errorf("secret values of type '%T' are not allowed", v)
 	}
-	return nil
+	return nil, nil
 }

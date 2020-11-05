@@ -28,3 +28,9 @@ func (s *SourceSuite) TestReadsSimplePipelineSecret() {
 		actual,
 	)
 }
+
+func (s *SourceSuite) TestFailsOnWrongValueType() {
+	fileBytes := []byte(`team_name/pipeline_name/secret_name: []`)
+	_, err := secretsyncer.BytesSource{fileBytes}.Read()
+	s.EqualError(err, "secret values of type '[]interface {}' are not allowed")
+}
